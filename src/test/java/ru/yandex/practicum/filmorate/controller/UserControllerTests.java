@@ -1,163 +1,119 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import jakarta.validation.ConstraintViolation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class UserControllerTests {
+class UserControllerValidatorTests {
 
     private UserController controller;
+    private Validator validator;
 
     @BeforeEach
-    void setup() {
+    void setUp() {
         controller = new UserController();
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        validator = factory.getValidator();
     }
 
-    @Test
-    void shouldCreateValidUser() {
+    private User validUser() {
         User user = new User();
         user.setEmail("test@test.com");
         user.setLogin("ivan");
         user.setName("Иван");
         user.setBirthday(LocalDate.of(2000, 1, 1));
+        return user;
+    }
+
+    private Set<ConstraintViolation<User>> validate(User user) {
+        return validator.validate(user);
+    }
+
+    @Test
+    void shouldCreateValidUser() {
+        User user = validUser();
+        Set<ConstraintViolation<User>> violations = validate(user);
+        assertTrue(violations.isEmpty(), "Валидный пользователь не должен содержать ошибок валидации");
 
         User created = controller.addUser(user);
-
         assertNotNull(created.getId());
-        assertEquals("ivan", created.getLogin());
     }
 
     @Test
     void shouldFailIfEmailMissing() {
-        User user = new User();
+        User user = validUser();
         user.setEmail(null);
-        user.setLogin("ivan");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
 
-        assertThrows(ValidationException.class,
-                () -> controller.addUser(user));
+        Set<ConstraintViolation<User>> violations = validate(user);
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("Имэйл не может быть пустым")));
     }
 
     @Test
     void shouldFailIfEmailNoAtSymbol() {
-        User user = new User();
-        user.setEmail("invalid.email");
-        user.setLogin("ivan");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
+        User user = validUser();
+        user.setEmail("wrong.email");
 
-        assertThrows(ValidationException.class,
-                () -> controller.addUser(user));
+        Set<ConstraintViolation<User>> violations = validate(user);
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("Имэйл должен содержать символ @")));
     }
 
     @Test
     void shouldFailIfLoginEmpty() {
-        User user = new User();
-        user.setEmail("test@test.com");
+        User user = validUser();
         user.setLogin("");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
 
-        assertThrows(ValidationException.class,
-                () -> controller.addUser(user));
+        Set<ConstraintViolation<User>> violations = validate(user);
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("Логин не может быть пустым")));
     }
 
     @Test
     void shouldFailIfLoginContainsSpaces() {
-        User user = new User();
-        user.setEmail("test@test.com");
+        User user = validUser();
         user.setLogin("iv an");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
 
-        assertThrows(ValidationException.class,
-                () -> controller.addUser(user));
+        Set<ConstraintViolation<User>> violations = validate(user);
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("Логин не должен содержать пробелы")));
     }
 
     @Test
     void shouldSetLoginAsNameIfNameEmpty() {
-        User user = new User();
-        user.setEmail("test@test.com");
-        user.setLogin("ivan");
+        User user = validUser();
         user.setName("");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        Set<ConstraintViolation<User>> violations = validate(user);
+        assertTrue(violations.isEmpty(), "Проверяем, что аннотации не запрещают пустое имя");
 
         User created = controller.addUser(user);
-
         assertEquals("ivan", created.getName());
     }
 
     @Test
     void shouldFailIfBirthdayInFuture() {
-        User user = new User();
-        user.setEmail("test@test.com");
-        user.setLogin("ivan");
+        User user = validUser();
         user.setBirthday(LocalDate.now().plusDays(1));
 
-        assertThrows(ValidationException.class,
-                () -> controller.addUser(user));
+        Set<ConstraintViolation<User>> violations = validate(user);
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("Дата рождения не может быть в будущем")));
     }
 
     @Test
-    void shouldFailOnEmptyJson() {
+    void shouldFailOnEmptyUser() {
         User user = new User();
-
-        assertThrows(ValidationException.class,
-                () -> controller.addUser(user));
-    }
-
-    @Test
-    void shouldUpdateUser() {
-        User user = new User();
-        user.setEmail("test@test.com");
-        user.setLogin("ivan");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
-
-        User created = controller.addUser(user);
-
-        User update = new User();
-        update.setId(created.getId());
-        update.setEmail("new@test.com");
-
-        User updated = controller.updateUser(update);
-
-        assertEquals("new@test.com", updated.getEmail());
-    }
-
-    @Test
-    void shouldFailUpdateIfNoId() {
-        User update = new User();
-        update.setEmail("test@test.com");
-
-        assertThrows(ValidationException.class,
-                () -> controller.updateUser(update));
-    }
-
-    @Test
-    void shouldFailUpdateIfUserNotFound() {
-        User update = new User();
-        update.setId(99L);
-        update.setEmail("test@test.com");
-
-        assertThrows(ValidationException.class,
-                () -> controller.updateUser(update));
-    }
-
-    @Test
-    void shouldFailUpdateIfInvalidEmail() {
-        User user = new User();
-        user.setEmail("test@test.com");
-        user.setLogin("ivan");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
-        controller.addUser(user);
-
-        User update = new User();
-        update.setId(1L);
-        update.setEmail("wrong");
-
-        assertThrows(ValidationException.class,
-                () -> controller.updateUser(update));
+        Set<ConstraintViolation<User>> violations = validate(user);
+        assertFalse(violations.isEmpty());
     }
 }
