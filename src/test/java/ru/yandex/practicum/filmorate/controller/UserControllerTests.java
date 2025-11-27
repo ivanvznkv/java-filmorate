@@ -13,7 +13,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class UserControllerValidatorTests {
+class UserControllerTests {
 
     private UserController controller;
     private Validator validator;
