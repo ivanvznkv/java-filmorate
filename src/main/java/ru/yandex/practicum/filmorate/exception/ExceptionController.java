@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import jakarta.validation.ConstraintViolationException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,26 +19,26 @@ import java.util.stream.Collectors;
 public class ExceptionController {
     @ExceptionHandler(ValidationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ValidationErrorResponse handleValidationException(ValidationException e) {
+    public ErrorResponse handleValidationException(ValidationException e) {
         log.warn("Ошибка валидации: {}", e.getMessage());
 
-        return new ValidationErrorResponse(
+        return new ErrorResponse(
                 List.of(new Violation("error", e.getMessage()))
         );
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ValidationErrorResponse handleEntityNotFoundException(EntityNotFoundException e) {
+    public ErrorResponse handleEntityNotFoundException(EntityNotFoundException e) {
         log.warn("{} с Id={} не найден", e.getEntityName(), e.getEntityId());
-        return new ValidationErrorResponse(
+        return new ErrorResponse(
                 List.of(new Violation("id", e.getMessage()))
         );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ValidationErrorResponse handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+    public ErrorResponse handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         List<Violation> violations = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> {
                     log.warn("Ошибка валидации! Поле: {}; Сообщение: {}", error.getField(), error.getDefaultMessage());
@@ -45,7 +46,22 @@ public class ExceptionController {
                 })
                 .collect(Collectors.toList());
 
-        return new ValidationErrorResponse(violations);
+        return new ErrorResponse(violations);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleConstraintViolationException(ConstraintViolationException e) {
+        log.warn("Ошибка валидации ConstraintViolationException: {}", e.getMessage());
+
+        List<Violation> violations = e.getConstraintViolations().stream()
+                .map(cv -> {
+                    log.warn("Ошибка валидации! Поле: {}; Сообщение: {}", cv.getPropertyPath(), cv.getMessage());
+                    return new Violation(cv.getPropertyPath().toString(), cv.getMessage());
+                })
+                .toList();
+
+        return new ErrorResponse(violations);
     }
 
     @Getter
@@ -57,7 +73,7 @@ public class ExceptionController {
 
     @Getter
     @RequiredArgsConstructor
-    public static class ValidationErrorResponse {
+    public static class ErrorResponse {
         private final List<Violation> violations;
     }
 }

@@ -1,10 +1,11 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.validation.ValidationGroups;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -17,7 +18,7 @@ public class FilmController {
     private final Map<Long, Film> films = new HashMap<>();
 
     @PostMapping
-    public Film addFilm(@Valid @RequestBody Film film) {
+    public Film addFilm(@Validated(ValidationGroups.OnCreate.class) @RequestBody Film film) {
         log.info("Получен запрос на добавление фильма: {}", film);
         film.setId(getNextId());
         films.put(film.getId(), film);
@@ -26,7 +27,7 @@ public class FilmController {
     }
 
     @PutMapping
-    public Film updateFilm(@Valid @RequestBody Film updatedFilm) {
+    public Film updateFilm(@Validated(ValidationGroups.OnUpdate.class) @RequestBody Film updatedFilm) {
         log.info("Получен запрос на обновление фильма: {}", updatedFilm);
 
         if (!films.containsKey(updatedFilm.getId())) {
@@ -34,7 +35,21 @@ public class FilmController {
             throw new EntityNotFoundException("Фильм", updatedFilm.getId());
         }
 
-        films.put(updatedFilm.getId(), updatedFilm);
+        Film oldFilm = films.get(updatedFilm.getId());
+
+        if (updatedFilm.getName() != null) {
+            oldFilm.setName(updatedFilm.getName());
+        }
+        if (updatedFilm.getDescription() != null) {
+            oldFilm.setDescription(updatedFilm.getDescription());
+        }
+        if (updatedFilm.getReleaseDate() != null) {
+            oldFilm.setReleaseDate(updatedFilm.getReleaseDate());
+        }
+        if (updatedFilm.getDuration() != null) {
+            oldFilm.setDuration(updatedFilm.getDuration());
+        }
+
         log.info("Фильм успешно обновлён: {}", updatedFilm);
         return updatedFilm;
     }
