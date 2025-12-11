@@ -38,7 +38,7 @@ public class FilmService {
         Film film = filmValidator.getFilmOrThrow(movieId);
 
         if (!film.getLikes().contains(userId)) {
-            throw new LikeOperationException("Пользователь не ставил лайк к данному фильму");
+            throw new LikeOperationException("Пользователь не добавлял лайк к данному фильму");
         }
 
         film.getLikes().remove(userId);
