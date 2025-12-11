@@ -5,6 +5,8 @@ import lombok.Data;
 import ru.yandex.practicum.filmorate.validation.ValidationGroups;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * User.
@@ -12,7 +14,7 @@ import java.time.LocalDate;
 @Data
 public class User {
     private String name;
-
+    private Set<Long> friends = new HashSet<>();
     @Null(groups = ValidationGroups.OnCreate.class)
     @NotNull(groups = ValidationGroups.OnUpdate.class)
     private Long id;
