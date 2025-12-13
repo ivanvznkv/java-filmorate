@@ -1,8 +1,5 @@
 package ru.yandex.practicum.filmorate.exception;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -11,9 +8,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import jakarta.validation.ConstraintViolationException;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Slf4j
 @RestControllerAdvice
 public class ExceptionController {
@@ -21,10 +15,29 @@ public class ExceptionController {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleValidationException(ValidationException e) {
         log.warn("Ошибка валидации: {}", e.getMessage());
+        return new ErrorResponse("Ошибка валидации", e.getMessage());
+    }
 
-        return new ErrorResponse(
-                List.of(new Violation("error", e.getMessage()))
-        );
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+                .reduce((s1, s2) -> s1 + "; " + s2)
+                .orElse("Ошибка валидации");
+        log.warn("Ошибка валидации MethodArgumentNotValidException: {}", message);
+        return new ErrorResponse("Ошибка валидации", message);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleConstraintViolationException(ConstraintViolationException e) {
+        String message = e.getConstraintViolations().stream()
+                .map(cv -> cv.getPropertyPath() + ": " + cv.getMessage())
+                .reduce((s1, s2) -> s1 + "; " + s2)
+                .orElse("Ошибка валидации");
+        log.warn("Ошибка валидации ConstraintViolationException: {}", message);
+        return new ErrorResponse("Ошибка валидации", message);
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -32,48 +45,29 @@ public class ExceptionController {
     public ErrorResponse handleEntityNotFoundException(EntityNotFoundException e) {
         log.warn("{} с Id={} не найден", e.getEntityName(), e.getEntityId());
         return new ErrorResponse(
-                List.of(new Violation("id", e.getMessage()))
+                "Объект не найден",
+                e.getEntityName() + " с Id=" + e.getEntityId() + " не найден"
         );
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ExceptionHandler(FriendOperationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        List<Violation> violations = e.getBindingResult().getFieldErrors().stream()
-                .map(error -> {
-                    log.warn("Ошибка валидации! Поле: {}; Сообщение: {}", error.getField(), error.getDefaultMessage());
-                    return new Violation(error.getField(), error.getDefaultMessage());
-                })
-                .collect(Collectors.toList());
-
-        return new ErrorResponse(violations);
+    public ErrorResponse handleFriendOperationException(FriendOperationException e) {
+        return new ErrorResponse("Ошибка работы с друзьями", e.getMessage());
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
+
+    @ExceptionHandler(LikeOperationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleConstraintViolationException(ConstraintViolationException e) {
-        log.warn("Ошибка валидации ConstraintViolationException: {}", e.getMessage());
-
-        List<Violation> violations = e.getConstraintViolations().stream()
-                .map(cv -> {
-                    log.warn("Ошибка валидации! Поле: {}; Сообщение: {}", cv.getPropertyPath(), cv.getMessage());
-                    return new Violation(cv.getPropertyPath().toString(), cv.getMessage());
-                })
-                .toList();
-
-        return new ErrorResponse(violations);
+    public ErrorResponse handleOperationException(RuntimeException e) {
+        log.warn("Ошибка операции: {}", e.getMessage());
+        return new ErrorResponse("Ошибка операции", e.getMessage());
     }
 
-    @Getter
-    @AllArgsConstructor
-    public static class Violation {
-        private final String fieldName;
-        private final String message;
-    }
-
-    @Getter
-    @RequiredArgsConstructor
-    public static class ErrorResponse {
-        private final List<Violation> violations;
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErrorResponse handleAllOtherExceptions(Exception e) {
+        log.error("Непредвиденная ошибка: ", e);
+        return new ErrorResponse("Внутренняя ошибка сервера", e.getMessage());
     }
 }

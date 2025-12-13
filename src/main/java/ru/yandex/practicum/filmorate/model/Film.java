@@ -6,6 +6,8 @@ import ru.yandex.practicum.filmorate.validation.ReleaseDateConstraint;
 import ru.yandex.practicum.filmorate.validation.ValidationGroups;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Film.
@@ -29,4 +31,5 @@ public class Film {
     @NotNull(message = "Продолжительность должна быть указана!", groups = ValidationGroups.OnCreate.class)
     @Positive(message = "Продолжительность должна быть больше 0", groups = {ValidationGroups.OnCreate.class, ValidationGroups.OnUpdate.class})
     private Integer duration;
+    private Set<Long> likes = new HashSet<>();
 }
