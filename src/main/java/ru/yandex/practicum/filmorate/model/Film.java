@@ -14,7 +14,6 @@ import java.util.Set;
  */
 @Data
 public class Film {
-    private Set<Long> likes = new HashSet<>();
     @Null(groups = ValidationGroups.OnCreate.class)
     @NotNull(groups = ValidationGroups.OnUpdate.class)
     private Long id;
@@ -32,4 +31,5 @@ public class Film {
     @NotNull(message = "Продолжительность должна быть указана!", groups = ValidationGroups.OnCreate.class)
     @Positive(message = "Продолжительность должна быть больше 0", groups = {ValidationGroups.OnCreate.class, ValidationGroups.OnUpdate.class})
     private Integer duration;
+    private Set<Long> likes = new HashSet<>();
 }

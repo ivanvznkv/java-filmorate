@@ -6,7 +6,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
 import ru.yandex.practicum.filmorate.validation.ValidationGroups;
 
 import java.util.Collection;
@@ -16,32 +15,31 @@ import java.util.Collection;
 @RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
-    private final UserStorage userStorage;
     private final UserService userService;
 
     // --- STORAGE операции
     @PostMapping
     public User addUser(@Validated(ValidationGroups.OnCreate.class) @RequestBody User user) {
         log.debug("POST /users {}", user);
-        return userStorage.addUser(user);
+        return userService.addUser(user);
     }
 
     @PutMapping
     public User updateUser(@Validated(ValidationGroups.OnUpdate.class) @RequestBody User updatedUser) {
         log.debug("PUT /users {}", updatedUser);
-        return userStorage.updateUser(updatedUser);
+        return userService.updateUser(updatedUser);
     }
 
     @GetMapping("/{id}")
     public User getById(@PathVariable Long id) {
         log.debug("GET /users/{}", id);
-        return userStorage.getById(id);
+        return userService.getById(id);
     }
 
     @GetMapping
     public Collection<User> getAll() {
         log.debug("GET /users");
-        return userStorage.getAll();
+        return userService.getAll();
     }
 
     // --- SERVICE операции
@@ -60,8 +58,8 @@ public class UserController {
     @GetMapping("/{id}/friends")
     public Collection<User> getFriends(@PathVariable Long id) {
         log.debug("GET /users/{}/friends", id);
-        return userStorage.getById(id).getFriends().stream()
-                .map(userStorage::getById)
+        return userService.getById(id).getFriends().stream()
+                .map(userService::getById)
                 .toList();
     }
 

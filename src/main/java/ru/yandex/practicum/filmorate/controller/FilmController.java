@@ -6,7 +6,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.validation.ValidationGroups;
 
 import java.util.Collection;
@@ -17,32 +16,31 @@ import java.util.List;
 @RequestMapping("/films")
 @RequiredArgsConstructor
 public class FilmController {
-    private final FilmStorage filmStorage;
     private final FilmService filmService;
 
     // --- STORAGE операции
     @PostMapping
     public Film addFilm(@Validated(ValidationGroups.OnCreate.class) @RequestBody Film film) {
         log.debug("POST /films {}", film);
-        return filmStorage.addFilm(film);
+        return filmService.addFilm(film);
     }
 
     @PutMapping
     public Film updateFilm(@Validated(ValidationGroups.OnUpdate.class) @RequestBody Film updatedFilm) {
         log.debug("PUT /films {}", updatedFilm);
-        return filmStorage.updateFilm(updatedFilm);
+        return filmService.updateFilm(updatedFilm);
     }
 
     @GetMapping("/{id}")
     public Film getById(@PathVariable Long id) {
         log.debug("GET /films/{}", id);
-        return filmStorage.getById(id);
+        return filmService.getById(id);
     }
 
     @GetMapping
     public Collection<Film> getAll() {
         log.debug("GET /films");
-        return filmStorage.getAll();
+        return filmService.getAll();
     }
 
     // --- SERVICE операции

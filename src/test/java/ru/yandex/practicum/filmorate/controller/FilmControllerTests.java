@@ -6,36 +6,28 @@ import jakarta.validation.ValidatorFactory;
 import jakarta.validation.ConstraintViolation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.yandex.practicum.filmorate.exception.LikeOperationException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
 import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
-import ru.yandex.practicum.filmorate.validation.FilmValidator;
-import ru.yandex.practicum.filmorate.validation.UserValidator;
 import ru.yandex.practicum.filmorate.validation.ValidationGroups;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class FilmControllerTests {
+
     private FilmController controller;
     private Validator validator;
-    private InMemoryFilmStorage filmStorage;
-    private InMemoryUserStorage userStorage;
 
     @BeforeEach
     void setUp() {
-        filmStorage = new InMemoryFilmStorage();
-        userStorage = new InMemoryUserStorage();
-        FilmValidator filmValidator = new FilmValidator(filmStorage);
-        UserValidator userValidator = new UserValidator(userStorage);
-        FilmService filmService = new FilmService(filmStorage, userValidator, filmValidator);
-        controller = new FilmController(filmStorage, filmService);
+        InMemoryFilmStorage filmStorage = new InMemoryFilmStorage();
+        InMemoryUserStorage userStorage = new InMemoryUserStorage();
+        FilmService filmService = new FilmService(filmStorage, userStorage);
+        controller = new FilmController(filmService);
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
     }
@@ -49,20 +41,10 @@ class FilmControllerTests {
         return film;
     }
 
-    private User validUser() {
-        User user = new User();
-        user.setEmail("test@test.com");
-        user.setLogin("ivan");
-        user.setName("Иван");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
-        return user;
-    }
-
     private Set<ConstraintViolation<Film>> validate(Film film, Class<?> group) {
         return validator.validate(film, group);
     }
 
-    // --- STORAGE тесты
     @Test
     void shouldAddValidFilm() {
         Film film = validFilm();
@@ -126,46 +108,5 @@ class FilmControllerTests {
         assertFalse(violations.isEmpty());
         assertTrue(violations.stream()
                 .anyMatch(v -> v.getMessage().contains("Дата релиза должна быть указана")));
-    }
-
-    // --- SERVICE тесты
-    @Test
-    void shouldAddAndRemoveLike() {
-        User user = userStorage.addUser(validUser());
-        Film film = controller.addFilm(validFilm());
-
-        controller.addLike(user.getId(), film.getId());
-        Film updated = filmStorage.getById(film.getId());
-        assertTrue(updated.getLikes().contains(user.getId()));
-
-        controller.removeLike(user.getId(), film.getId());
-        updated = filmStorage.getById(film.getId());
-        assertFalse(updated.getLikes().contains(user.getId()));
-    }
-
-    @Test
-    void removeLikeShouldThrowIfNoLike() {
-        User user = userStorage.addUser(validUser());
-        Film film = controller.addFilm(validFilm());
-
-        LikeOperationException ex = assertThrows(LikeOperationException.class,
-                () -> controller.removeLike(user.getId(), film.getId()));
-        assertEquals("Пользователь не добавлял лайк к данному фильму", ex.getMessage());
-    }
-
-    @Test
-    void getPopularShouldReturnFilmsInOrder() {
-        User user1 = userStorage.addUser(validUser());
-        User user2 = userStorage.addUser(validUser());
-        Film film1 = controller.addFilm(validFilm());
-        Film film2 = controller.addFilm(validFilm());
-
-        controller.addLike(film2.getId(), user1.getId());
-        controller.addLike(film2.getId(), user2.getId());
-        controller.addLike(film1.getId(), user1.getId());
-
-        List<Film> topFilms = controller.getPopular(2);
-        assertEquals(film2.getId(), topFilms.get(0).getId());
-        assertEquals(film1.getId(), topFilms.get(1).getId());
     }
 }

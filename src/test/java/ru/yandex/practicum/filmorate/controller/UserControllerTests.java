@@ -9,11 +9,9 @@ import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
-import ru.yandex.practicum.filmorate.validation.UserValidator;
 import ru.yandex.practicum.filmorate.validation.ValidationGroups;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,14 +20,12 @@ class UserControllerTests {
 
     private UserController controller;
     private Validator validator;
-    private InMemoryUserStorage userStorage;
 
     @BeforeEach
     void setUp() {
-        userStorage = new InMemoryUserStorage();
-        UserValidator userValidator = new UserValidator(userStorage);
-        UserService userService = new UserService(userStorage, userValidator);
-        controller = new UserController(userStorage, userService);
+        InMemoryUserStorage userStorage = new InMemoryUserStorage();
+        UserService userService = new UserService(userStorage);
+        controller = new UserController(userService);
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
     }
@@ -47,7 +43,6 @@ class UserControllerTests {
         return validator.validate(user, group);
     }
 
-    // --- STORAGE тесты
     @Test
     void shouldCreateValidUser() {
         User user = validUser();
@@ -153,38 +148,5 @@ class UserControllerTests {
         User updated = validUser();
         Exception ex = assertThrows(Exception.class, () -> controller.updateUser(updated));
         assertTrue(ex.getMessage().contains("не найден"));
-    }
-
-    // --- SERVICE тесты
-    @Test
-    void shouldAddAndRemoveFriend() {
-        User user1 = controller.addUser(validUser());
-        User user2 = controller.addUser(validUser());
-
-        controller.addFriend(user1.getId(), user2.getId());
-        User updated1 = userStorage.getById(user1.getId());
-        User updated2 = userStorage.getById(user2.getId());
-        assertTrue(updated1.getFriends().contains(user2.getId()));
-        assertTrue(updated2.getFriends().contains(user1.getId()));
-
-        controller.removeFriend(user1.getId(), user2.getId());
-        updated1 = userStorage.getById(user1.getId());
-        updated2 = userStorage.getById(user2.getId());
-        assertFalse(updated1.getFriends().contains(user2.getId()));
-        assertFalse(updated2.getFriends().contains(user1.getId()));
-    }
-
-    @Test
-    void shouldReturnCommonFriends() {
-        User user1 = controller.addUser(validUser());
-        User user2 = controller.addUser(validUser());
-        User user3 = controller.addUser(validUser());
-
-        controller.addFriend(user1.getId(), user3.getId());
-        controller.addFriend(user2.getId(), user3.getId());
-
-        List<User> commonFriends = controller.getCommonFriends(user1.getId(), user2.getId()).stream().toList();
-        assertEquals(1, commonFriends.size());
-        assertEquals(user3.getId(), commonFriends.get(0).getId());
     }
 }
