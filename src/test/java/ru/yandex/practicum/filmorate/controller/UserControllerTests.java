@@ -7,6 +7,8 @@ import jakarta.validation.ConstraintViolation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 import ru.yandex.practicum.filmorate.validation.ValidationGroups;
 
 import java.time.LocalDate;
@@ -21,7 +23,9 @@ class UserControllerTests {
 
     @BeforeEach
     void setUp() {
-        controller = new UserController();
+        InMemoryUserStorage userStorage = new InMemoryUserStorage();
+        UserService userService = new UserService(userStorage);
+        controller = new UserController(userService);
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
     }
