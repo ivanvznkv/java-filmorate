@@ -58,9 +58,7 @@ public class UserController {
     @GetMapping("/{id}/friends")
     public Collection<User> getFriends(@PathVariable Long id) {
         log.debug("GET /users/{}/friends", id);
-        return userService.getById(id).getFriends().stream()
-                .map(userService::getById)
-                .toList();
+        return userService.getFriends(id);
     }
 
     @GetMapping("/{id}/friends/common/{otherId}")

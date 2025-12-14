@@ -64,6 +64,20 @@ public class UserService {
         log.info("Пользователь с id={} удалил из друзей пользователя с id={}", userId, friendId);
     }
 
+    public Collection<User> getFriends(long userId) {
+        User user = userStorage.getById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Пользователь", userId));
+
+        Set<Long> friendIds = user.getFriends();
+        if (friendIds == null || friendIds.isEmpty()) {
+            return List.of();
+        }
+
+        return friendIds.stream()
+                .map(this::getById)
+                .toList();
+    }
+
     public List<User> getCommonFriends(long userId, long friendId) {
         User user = userStorage.getById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Пользователь", userId));

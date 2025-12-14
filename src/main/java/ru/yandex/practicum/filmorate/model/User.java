@@ -14,7 +14,6 @@ import java.util.Set;
 @Data
 public class User {
     private String name;
-    private Set<Long> friends = new HashSet<>();
     @Null(groups = ValidationGroups.OnCreate.class)
     @NotNull(groups = ValidationGroups.OnUpdate.class)
     private Long id;
@@ -30,4 +29,5 @@ public class User {
     @NotNull(message = "Дата рождения не может быть пустой", groups = ValidationGroups.OnCreate.class)
     @PastOrPresent(message = "Дата рождения не может быть в будущем", groups = {ValidationGroups.OnCreate.class, ValidationGroups.OnUpdate.class})
     private LocalDate birthday;
+    private Set<Long> friends = new HashSet<>();
 }

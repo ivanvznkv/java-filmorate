@@ -65,11 +65,7 @@ public class FilmService {
         log.info("Пользователь id={} удалил лайк с фильма id={}", userId, movieId);
     }
 
-    public List<Film> getTop10Films(int count) {
-        if (count <= 0) {
-            throw new IllegalArgumentException("Сount должен быть больше нуля");
-        }
-
+    public List<Film> getPopularFilms(int count) {
         return filmStorage.getAll().stream()
                 .sorted((f1, f2) -> Integer.compare(f2.getLikes().size(), f1.getLikes().size()))
                 .limit(count)
