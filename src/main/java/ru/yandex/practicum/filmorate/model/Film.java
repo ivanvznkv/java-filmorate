@@ -31,5 +31,7 @@ public class Film {
     @NotNull(message = "Продолжительность должна быть указана!", groups = ValidationGroups.OnCreate.class)
     @Positive(message = "Продолжительность должна быть больше 0", groups = {ValidationGroups.OnCreate.class, ValidationGroups.OnUpdate.class})
     private Integer duration;
+    private Set<Genre> genres = new HashSet<>();
+    private MpaRating rating;
     private Set<Long> likes = new HashSet<>();
 }

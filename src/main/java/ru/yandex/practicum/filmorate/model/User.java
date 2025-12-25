@@ -30,4 +30,5 @@ public class User {
     @PastOrPresent(message = "Дата рождения не может быть в будущем", groups = {ValidationGroups.OnCreate.class, ValidationGroups.OnUpdate.class})
     private LocalDate birthday;
     private Set<Long> friends = new HashSet<>();
+    private FriendshipStatus friendshipStatus;
 }
