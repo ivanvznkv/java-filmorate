@@ -2,13 +2,12 @@ package ru.yandex.practicum.filmorate.dal;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Primary;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.dal.mapper.FilmRowMapper;
+import ru.yandex.practicum.filmorate.dal.mapper.FilmWithDetailsRowMapper;
 import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
 import ru.yandex.practicum.filmorate.exception.LikeOperationException;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -21,6 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -52,9 +52,7 @@ public class FilmDbStorage implements FilmStorage {
         long filmId = keyHolder.getKey().longValue();
         film.setId(filmId);
         saveGenres(film);
-
-        return getById(filmId)
-                .orElseThrow(() -> new EntityNotFoundException("Фильм", filmId));
+        return film;
     }
 
     @Override
@@ -65,7 +63,7 @@ public class FilmDbStorage implements FilmStorage {
                 WHERE film_id = ?
                 """;
 
-        jdbcTemplate.update(sql,
+        int updatedRows = jdbcTemplate.update(sql,
                 film.getName(),
                 film.getDescription(),
                 film.getReleaseDate() != null ? Date.valueOf(film.getReleaseDate()) : null,
@@ -74,18 +72,17 @@ public class FilmDbStorage implements FilmStorage {
                 film.getId()
         );
 
+        if (updatedRows == 0) {
+            throw new EntityNotFoundException("Фильм", film.getId());
+        }
+
         jdbcTemplate.update("DELETE FROM film_genres WHERE film_id = ?", film.getId());
         saveGenres(film);
-        return getById(film.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Фильм", film.getId()));
+        return film;
     }
 
     @Override
     public Optional<Film> getById(Long id) {
-        if (id == null) {
-            throw new IllegalArgumentException("film_id не может быть null");
-        }
-
         String sql = """
         SELECT f.film_id,
                f.name,
@@ -99,14 +96,16 @@ public class FilmDbStorage implements FilmStorage {
         WHERE f.film_id = ?
         """;
 
-        try {
-            Film film = jdbcTemplate.queryForObject(sql, new FilmRowMapper(), id);
-            loadGenres(film);
-            loadLikes(film);
-            return Optional.of(film);
-        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+        List<Film> films = jdbcTemplate.query(sql, new FilmRowMapper(), id);
+
+        if (films.isEmpty()) {
             return Optional.empty();
         }
+
+        Film film = films.get(0);
+        loadGenres(film);
+        loadLikes(film);
+        return Optional.of(film);
     }
 
 
@@ -119,17 +118,19 @@ public class FilmDbStorage implements FilmStorage {
                f.release_date,
                f.duration,
                f.mpa_id,
-               m.code AS mpa_name
+               m.code AS mpa_name,
+               GROUP_CONCAT(DISTINCT g.genre_id) AS genre_ids,
+               GROUP_CONCAT(DISTINCT g.name) AS genre_names,
+               GROUP_CONCAT(DISTINCT fl.user_id) AS like_ids
         FROM films f
         LEFT JOIN mpa_ratings m ON f.mpa_id = m.mpa_id
+        LEFT JOIN film_genres fg ON f.film_id = fg.film_id
+        LEFT JOIN genres g ON fg.genre_id = g.genre_id
+        LEFT JOIN film_likes fl ON f.film_id = fl.film_id
+        GROUP BY f.film_id
         """;
 
-        Collection<Film> films = jdbcTemplate.query(sql, new FilmRowMapper());
-        films.forEach(f -> {
-            loadGenres(f);
-            loadLikes(f);
-        });
-        return films;
+        return jdbcTemplate.query(sql, new FilmWithDetailsRowMapper());
     }
 
     private void saveGenres(Film film) {
@@ -139,9 +140,11 @@ public class FilmDbStorage implements FilmStorage {
 
         String sql = "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
 
-        for (Genre genre : film.getGenres()) {
-            jdbcTemplate.update(sql, film.getId(), genre.getId());
-        }
+        List<Object[]> batchArgs = film.getGenres().stream()
+                .map(genre -> new Object[]{film.getId(), genre.getId()})
+                .collect(Collectors.toList());
+
+        jdbcTemplate.batchUpdate(sql, batchArgs);
     }
 
     private void loadGenres(Film film) {
@@ -172,14 +175,7 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public void addLike(Long filmId, Long userId) {
         String sql = "INSERT INTO film_likes (film_id, user_id) VALUES (?, ?)";
-
-        try {
-            jdbcTemplate.update(sql, filmId, userId);
-        } catch (DuplicateKeyException e) {
-            throw new LikeOperationException("Пользователь уже ставил лайк этому фильму.");
-        } catch (DataIntegrityViolationException e) {
-            throw new LikeOperationException("Не удалось поставить лайк.");
-        }
+        jdbcTemplate.update(sql, filmId, userId);
     }
 
     @Override
@@ -190,5 +186,32 @@ public class FilmDbStorage implements FilmStorage {
         if (deletedRows == 0) {
             throw new LikeOperationException("Пользователь не добавлял лайк к данному фильму");
         }
+    }
+
+    @Override
+    public List<Film> getPopularFilms(int count) {
+        String sql = """
+        SELECT f.film_id,
+               f.name,
+               f.description,
+               f.release_date,
+               f.duration,
+               f.mpa_id,
+               m.code AS mpa_name,
+               GROUP_CONCAT(DISTINCT g.genre_id) AS genre_ids,
+               GROUP_CONCAT(DISTINCT g.name) AS genre_names,
+               GROUP_CONCAT(DISTINCT fl.user_id) AS like_ids,
+               COUNT(DISTINCT fl.user_id) AS likes_count
+        FROM films f
+        LEFT JOIN mpa_ratings m ON f.mpa_id = m.mpa_id
+        LEFT JOIN film_genres fg ON f.film_id = fg.film_id
+        LEFT JOIN genres g ON fg.genre_id = g.genre_id
+        LEFT JOIN film_likes fl ON f.film_id = fl.film_id
+        GROUP BY f.film_id
+        ORDER BY likes_count DESC, f.film_id ASC
+        LIMIT ?
+        """;
+
+        return jdbcTemplate.query(sql, new FilmWithDetailsRowMapper(), count);
     }
 }

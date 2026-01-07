@@ -13,7 +13,7 @@ import java.util.Collection;
 @RequiredArgsConstructor
 public class FriendshipDbStorage implements FriendshipStorage {
     private final JdbcTemplate jdbcTemplate;
-    private final UserRowMapper userRowMapper = new UserRowMapper();
+    private final UserRowMapper userRowMapper;
 
     @Override
     public void addFriend(long userId, long friendId) {

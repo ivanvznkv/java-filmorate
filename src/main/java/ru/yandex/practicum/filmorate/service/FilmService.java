@@ -2,10 +2,8 @@ package ru.yandex.practicum.filmorate.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
-import ru.yandex.practicum.filmorate.exception.LikeOperationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
@@ -53,11 +51,8 @@ public class FilmService {
         filmStorage.getById(movieId)
                 .orElseThrow(() -> new EntityNotFoundException("Фильм", movieId));
 
-        try {
-            filmStorage.addLike(movieId, userId);
-        } catch (DataIntegrityViolationException e) {
-            throw new LikeOperationException("Пользователь уже ставил лайк этому фильму.");
-        }
+        filmStorage.addLike(movieId, userId);
+
         log.info("Пользователь id={} поставил лайк фильму id={}", userId, movieId);
     }
 
@@ -74,17 +69,7 @@ public class FilmService {
     }
 
     public List<Film> getPopularFilms(int count) {
-        return filmStorage.getAll().stream()
-                .sorted((f1, f2) -> {
-                    int likes1 = f1.getLikes().size();
-                    int likes2 = f2.getLikes().size();
-                    if (likes1 != likes2) {
-                        return Integer.compare(likes2, likes1);
-                    }
-                    return Long.compare(f1.getId(), f2.getId());
-                })
-                .limit(count)
-                .collect(Collectors.toList());
+        return filmStorage.getPopularFilms(count);
     }
 
     private void enrichFilm(Film film) {

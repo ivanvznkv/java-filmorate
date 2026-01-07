@@ -14,13 +14,13 @@ import ru.yandex.practicum.filmorate.dal.mapper.UserRowMapper;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
 @Primary
 public class UserDbStorage implements UserStorage {
-
     private final JdbcTemplate jdbcTemplate;
 
     @Override
@@ -69,11 +69,8 @@ public class UserDbStorage implements UserStorage {
     @Override
     public Optional<User> getById(Long id) {
         String sql = "SELECT * FROM users WHERE user_id = ?";
-        try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, new UserRowMapper(), id));
-        } catch (Exception e) {
-            return Optional.empty();
-        }
+        List<User> users = jdbcTemplate.query(sql, new UserRowMapper(), id);
+        return users.stream().findFirst();
     }
 
     @Override

@@ -13,7 +13,6 @@ import java.util.Optional;
 @Repository
 @RequiredArgsConstructor
 public class MpaRatingDbStorage implements MpaRatingStorage {
-
     private final JdbcTemplate jdbcTemplate;
 
     @Override

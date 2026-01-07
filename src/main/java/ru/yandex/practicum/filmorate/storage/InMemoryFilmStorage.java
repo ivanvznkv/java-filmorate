@@ -6,10 +6,8 @@ import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
 import ru.yandex.practicum.filmorate.exception.LikeOperationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -87,6 +85,16 @@ public class InMemoryFilmStorage implements FilmStorage {
         }
 
         log.info("Удалён лайк: пользователь {} → фильм {}", userId, filmId);
+    }
+
+    @Override
+    public List<Film> getPopularFilms(int count) {
+        return films.values().stream()
+                .sorted(Comparator
+                        .comparingInt((Film f) -> f.getLikes().size()).reversed()
+                        .thenComparingLong(Film::getId))
+                .limit(Math.max(0, count))
+                .collect(Collectors.toList());
     }
 
     private Long getNextId() {
