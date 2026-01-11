@@ -9,12 +9,14 @@ import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.FriendshipStorage;
 import ru.yandex.practicum.filmorate.validation.ValidationGroups;
 
 import java.time.LocalDate;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 class UserControllerTests {
 
@@ -24,7 +26,9 @@ class UserControllerTests {
     @BeforeEach
     void setUp() {
         InMemoryUserStorage userStorage = new InMemoryUserStorage();
-        UserService userService = new UserService(userStorage);
+        FriendshipStorage friendshipStorage = mock(FriendshipStorage.class);
+
+        UserService userService = new UserService(userStorage, friendshipStorage);
         controller = new UserController(userService);
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();

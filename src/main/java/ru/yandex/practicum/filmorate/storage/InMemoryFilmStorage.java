@@ -3,12 +3,11 @@ package ru.yandex.practicum.filmorate.storage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
+import ru.yandex.practicum.filmorate.exception.LikeOperationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -58,6 +57,44 @@ public class InMemoryFilmStorage implements FilmStorage {
     @Override
     public Collection<Film> getAll() {
         return films.values();
+    }
+
+    @Override
+    public void addLike(Long filmId, Long userId) {
+        Film film = films.get(filmId);
+        if (film == null) {
+            throw new EntityNotFoundException("Фильм", filmId);
+        }
+
+        if (!film.getLikes().add(userId)) {
+            throw new LikeOperationException("Пользователь уже ставил лайк этому фильму.");
+        }
+
+        log.info("Добавлен лайк: пользователь {} → фильм {}", userId, filmId);
+    }
+
+    @Override
+    public void removeLike(Long filmId, Long userId) {
+        Film film = films.get(filmId);
+        if (film == null) {
+            throw new EntityNotFoundException("Фильм", filmId);
+        }
+
+        if (!film.getLikes().remove(userId)) {
+            throw new LikeOperationException("Пользователь не добавлял лайк к данному фильму");
+        }
+
+        log.info("Удалён лайк: пользователь {} → фильм {}", userId, filmId);
+    }
+
+    @Override
+    public List<Film> getPopularFilms(int count) {
+        return films.values().stream()
+                .sorted(Comparator
+                        .comparingInt((Film f) -> f.getLikes().size()).reversed()
+                        .thenComparingLong(Film::getId))
+                .limit(Math.max(0, count))
+                .collect(Collectors.toList());
     }
 
     private Long getNextId() {
